@@ -8,6 +8,8 @@ from ocds.export.helpers import encoder, decoder
 from couchdb.json import use
 from .base import Storage
 from ocds.storage.errors import DocumentNotFound
+from copy import deepcopy
+from itertools import tee
 
 
 use(decode=decoder, encode=encoder)
@@ -67,18 +69,29 @@ class TendersStorage(CouchStorage):
         super(TendersStorage, self).__init__(config, tenders_views)
 
     def __iter__(self):
+        prev = ''
+        same_id = []
         for row in self.db.iterview('tenders/docs', 100):
-            yield row['value']
-
-    def get_all(self):
-        for row in self.db.iterview('tenders/docs', 100):
-            yield row['value']
+            # import pdb
+            # pdb.set_trace()
+            same_id.append(row['value'])
+            if not prev:
+                prev = row['key']
+            elif prev != row['key']:
+                temp = deepcopy(same_id)
+                same_id = same_id[-1:]
+                prev = row['key']
+                yield temp
 
     def get_tenders_between_dates(self, datestart, datefinish):
         for row in self.db.iterview('tenders/dates',
                                     100,
                                     startkey=datestart,
                                     endkey=datefinish):
+            yield row['value']
+
+    def get_same_id_tenders(self):
+        for row in self.db.iterview('tenders/same', 100, reduce=True):
             yield row['value']
 
 
@@ -96,8 +109,21 @@ class ReleasesStorage(CouchStorage):
             yield row['value']
 
     def get_ocid(self, key):
-        for row in self.db.iterview('releases/ocid', 100, key=key):
+        for row in self.db.view('releases/ocid', key=key):
             yield row['value']
+
+    def get_finished_ocids(self):
+        prev = ''
+        for row in self.db.iterview('releases/finished', 100):
+            if prev == row['key']:
+                prev = row['key']
+                yield [row['value'], True]
+            else:
+                yield [row['value'], False]
 
     def save(self, doc):
         self.db.save(doc)
+
+    def get_path_from_ocid(self, ocid):
+        for row in self.db.iterview('releases/path', 100, key=ocid, reduce=True):
+            yield row['value']

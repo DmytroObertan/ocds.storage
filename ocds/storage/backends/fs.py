@@ -109,3 +109,6 @@ class FSStorage(Storage):
         if path:
             return self._load(path)
         raise DocumentNotFound
+
+    def get_by_full_path(self, full_path):
+        return self._load(full_path + '.json')

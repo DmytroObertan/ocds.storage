@@ -1,7 +1,7 @@
 from ..backends.couch import TendersStorage, ReleasesStorage
 from ocds.storage.backends.fs import FSStorage
 import os
-from ocds.export.release import get_release_from_tender
+from ocds.export.release import get_release_from_tender, do_releases
 from ocds.storage.models import ReleaseDoc
 
 
@@ -15,13 +15,27 @@ class MainStorage(object):
         self.basepath = basepath
 
     def _find(self, ocid):
-        if self.rel_storage.get_ocid(ocid):
-            return True
-        else:
-            return False
+        for res in self.rel_storage.get_ocid(ocid):
+            if res:
+                return True
+            else:
+                return False
 
     def __contains__(self, key):
         self._find(key)
+
+    def get_releases_for_record(self):
+        for doc in self.rel_storage.get_finished_ocids():
+            same_ocids = []
+            release = doc[0]
+            is_same = doc[1]
+            if is_same:
+                same_ocids.append(release)
+            else:
+                same_ocids.append(release)
+                releases = same_ocids
+                same_ocids = []
+                yield releases
 
     def is_finished(self, status):
         if status in ['complete', 'unsuccesful', 'cancelled']:
@@ -29,23 +43,27 @@ class MainStorage(object):
         else:
             return False
 
-    def form_doc(self, ocid, path, status):
-        return ReleaseDoc(path=path,
+    def form_doc(self, ocid, path, status, _id):
+        return ReleaseDoc(_id=_id,
+                          path=path,
                           ocid=ocid,
-                          finished=self.is_finished(status),
-                          same_ocids=self._find(ocid)
+                          finished=self.is_finished(status)
                           ).__dict__['_data']
 
     def _write(self):
-        for tender in self.ten_storage:
-            release = get_release_from_tender(tender, self.info.get('prefix'))
-            self.fs_storage.save(release)
-            path = os.path.join(
-                self.basepath, self.fs_storage._path_from_date(tender['date']))
-            self.rel_storage.save(self.form_doc(release['ocid'],
-                                                path,
-                                                tender['status'])
-                                  )
+        for ten in self.ten_storage:
+            if ten:
+                ten = ten[:-1]
+            for release in do_releases(ten, self.info['prefix']):
+                _id = release['id']
+                self.fs_storage.save(release)
+                path = os.path.join(
+                    self.basepath, self.fs_storage._path_from_date(release['date']))
+                self.rel_storage.save(self.form_doc(release['ocid'],
+                                                    path,
+                                                    release['tender']['status'],
+                                                    _id)
+                                      )
 
     def save(self):
         self._write()
