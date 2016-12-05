@@ -69,7 +69,7 @@ class TendersStorage(CouchStorage):
 
     def __iter__(self):
         same = []
-        for i, row in enumerate(self.db.iterview('tenders/docs', 100)):
+        for i, row in enumerate(self.db.iterview('tenders/doc', 100)):
             same.append(row['value'])
             if i == 0:
                 prev = row['key']
@@ -79,6 +79,10 @@ class TendersStorage(CouchStorage):
                 prev = row['key']
                 yield temp[:-1]
         yield same
+
+    def get_all(self):
+        for row in self.db.iterview('tenders/doc', 100):
+            yield row['value']
 
     def get_tenders_between_dates(self, datestart, datefinish):
         for row in self.db.iterview('tenders/dates',

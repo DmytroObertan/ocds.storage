@@ -41,18 +41,31 @@ class MainStorage(object):
                           finished=self.is_finished(status)
                           ).__dict__['_data']
 
-    def _write(self):
-        for tenders in self.ten_storage:
-            for release in do_releases(tenders, self.info['prefix']):
-                _id = release['id']
-                self.fs_storage.save(release)
-                path = os.path.join(
-                    self.basepath, self.fs_storage._path_from_date(release['date']))
-                self.rel_storage.save(self.form_doc(release['ocid'],
-                                                    path,
-                                                    release['tender']['status'],
-                                                    _id)
-                                      )
+    # def _write(self):
+    #     for tenders in self.ten_storage:
+    #         for release in do_releases(tenders, self.info['prefix']):
+    #             _id = release['id']
+    #             self.fs_storage.save(release)
+    #             path = os.path.join(
+    #                 self.basepath, self.fs_storage._path_from_date(release['date']))
+    #             self.rel_storage.save(self.form_doc(release['ocid'],
+    #                                                 path,
+    #                                                 release['tender']['status'],
+    #                                                 _id)
+    #                                   )
 
-    def save(self):
-        self._write()
+    def _write(self, tenders):
+        # for tenders in self.ten_storage:
+        for release in do_releases(tenders, self.info['prefix']):
+            _id = release['id']
+            self.fs_storage.save(release)
+            path = os.path.join(
+                self.basepath, self.fs_storage._path_from_date(release['date']))
+            self.rel_storage.save(self.form_doc(release['ocid'],
+                                                path,
+                                                release['tender']['status'],
+                                                _id)
+                                  )
+
+    def save(self, tenders):
+        self._write(tenders)
